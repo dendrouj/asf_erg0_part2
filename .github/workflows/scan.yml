@@ -1,0 +1,5 @@
+name: Docker_scan
+
+on:
+  push:
+    branches: [ "main" ]
