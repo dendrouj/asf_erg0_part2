@@ -2,4 +2,56 @@ name: Docker_scan
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ] #run whenever something is pushed to the main branch
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest 
+
+    permissions:
+      contents: read #read access to the repository contents
+      packages: write #so as to push the built image to GitHub Container Registry
+      security-events: write #for security alerts for found vulnerabilities
+    
+    steps:
+    - name: checkout repo
+      uses: actions/checkout@v4 #downloads repo to the vm
+
+    - name: login to github container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: build docker image
+      run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}:latest
+          docker build -t $IMAGE_NAME .
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+        # run: docker build -t ghcr.io/${{ github.repository }}:latest .
+
+    - name: push created image #pushes created image to the container registry
+      run: docker push ${{ env.IMAGE_NAME }}
+
+    - name: scan image using docker scout
+      uses: docker/scout-action@v1
+      with: #check for:
+        command: cves,sbom
+        image: ${{ env.IMAGE_NAME }}
+        sarif-file: scout-report.sarif
+        output: sbom-report.spdx.json
+        format: spdx
+        exit-code: false
+
+    - name: upload SBOM report
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom-report
+        path: sbom-report.spdx.json
+
+    - name: upload SARIF report
+      uses: actions/upload-artifact@v4
+      with:
+        name: scout-report
+        path: scout-report.sarif
