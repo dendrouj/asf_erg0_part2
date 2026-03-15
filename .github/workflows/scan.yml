@@ -17,6 +17,12 @@ jobs:
     - name: checkout repo
       uses: actions/checkout@v4 #downloads repo to the vm
 
+    - name: login to Dockerhub
+      uses: docker/login-action@v3
+      with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     - name: login to github container registry
       uses: docker/login-action@v3
       with:
